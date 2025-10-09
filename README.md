@@ -1,87 +1,69 @@
-# Welcome to React Router!
+# React Three Fiber App - 3D House Explorer
 
-A modern, production-ready template for building full-stack React applications using React Router.
-
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/remix-run/react-router-templates/tree/main/default)
+A **React Three Fiber** application featuring an interactive 3D house environment with physics-based player movement and dynamic camera perspectives.
 
 ## Features
 
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
+### 🏠 3D House Scene
+- Interactive 3D house environment
+- Physics-based collisions and interactions
+- Detailed architectural elements including doors and walls
+
+### 🎮 Player System
+- **Player mesh** that represents you in the 3D world
+- Smooth physics-based movement and collision detection
+- Interactive overlays for user feedback
+
+### 🎯 Navigation Controls
+- **Arrow Keys**: Navigate the player through the 3D environment
+  - ↑ Move forward
+  - ↓ Move backward  
+  - ← Move left
+  - → Move right
+
+### 📷 Camera Perspectives
+- **C Key**: Toggle between first-person and third-person perspective
+  - **Third Person**: View your player character from behind
+  - **First Person**: Immersive first-person view with camera-following UI overlays
+
+### 🚪 Interactive Elements
+- **E Key**: Interact with objects in the environment
+  - Open/close doors
+  - Context-sensitive interaction prompts
+  - Different UI displays for each camera mode:
+    - Third person: 3D text floating in world space
+    - First person: Screen-space overlay that follows the camera
+
+## Technology Stack
+
+- **React Three Fiber**: React renderer for Three.js
+- **@react-three/drei**: Useful helpers and components
+- **@react-three/rapier**: Physics engine integration
+- **Three.js**: 3D graphics library
+- **TypeScript**: Type-safe development
 
 ## Getting Started
 
-### Installation
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-Install the dependencies:
+2. Start the development server:
+   ```bash
+   npm run dev
+   ```
 
-```bash
-npm install
-```
+3. Open your browser and navigate to the local development URL
 
-### Development
+4. Use the controls mentioned above to explore the 3D house!
 
-Start the development server with HMR:
+## Controls Summary
 
-```bash
-npm run dev
-```
+| Key | Action |
+|-----|--------|
+| ↑↓←→ | Move player |
+| C | Toggle first/third person |
+| E | Interact with objects |
 
-Your application will be available at `http://localhost:5173`.
-
-## Building for Production
-
-Create a production build:
-
-```bash
-npm run build
-```
-
-## Deployment
-
-### Docker Deployment
-
-To build and run using Docker:
-
-```bash
-docker build -t my-app .
-
-# Run the container
-docker run -p 3000:3000 my-app
-```
-
-The containerized application can be deployed to any platform that supports Docker, including:
-
-- AWS ECS
-- Google Cloud Run
-- Azure Container Apps
-- Digital Ocean App Platform
-- Fly.io
-- Railway
-
-### DIY Deployment
-
-If you're familiar with deploying Node applications, the built-in app server is production-ready.
-
-Make sure to deploy the output of `npm run build`
-
-```
-├── package.json
-├── package-lock.json (or pnpm-lock.yaml, or bun.lockb)
-├── build/
-│   ├── client/    # Static assets
-│   └── server/    # Server-side code
-```
-
-## Styling
-
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
-
----
-
-Built with ❤️ using React Router.
+Enjoy exploring your virtual house! 🏡
