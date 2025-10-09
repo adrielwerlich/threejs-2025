@@ -5,4 +5,19 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
   plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],
+  resolve: {
+    alias: {
+      '@react-three/cannon': '@react-three/cannon/dist/index.js'
+    }
+  },
+  optimizeDeps: {
+    include: ['@react-three/cannon'],
+    exclude: ['@dimforge/rapier3d-compat']
+  },
+  server: {
+    headers: {
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+    }
+  }
 });

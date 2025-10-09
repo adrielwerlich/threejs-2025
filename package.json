@@ -9,12 +9,22 @@
     "typecheck": "react-router typegen && tsc"
   },
   "dependencies": {
+    "@dimforge/rapier3d-compat": "^0.19.1",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.4",
+    "@mui/material": "^7.3.4",
     "@react-router/node": "^7.9.2",
     "@react-router/serve": "^7.9.2",
+    "@react-three/cannon": "^6.6.0",
+    "@react-three/drei": "^10.7.6",
+    "@react-three/fiber": "^9.3.0",
+    "@react-three/rapier": "^2.1.0",
     "isbot": "^5.1.31",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "react-router": "^7.9.2"
+    "react-router": "^7.9.2",
+    "three": "^0.180.0"
   },
   "devDependencies": {
     "@react-router/dev": "^7.9.2",
