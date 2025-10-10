@@ -14,6 +14,7 @@ export interface PlayerControls {
   run: boolean
   toggleCamera: boolean
   toggleDebug: boolean
+  useOrbitControls: boolean
 }
 
 export type AnimationType = 'idle' | 'walking' | 'running'
