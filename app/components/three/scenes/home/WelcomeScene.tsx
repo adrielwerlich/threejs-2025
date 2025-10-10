@@ -13,6 +13,7 @@ import { CameraController, type CameraControllerRef } from '../../../../player/C
 import { PhysicsHouse } from '../../physics/PhysicsHouse'
 import { LoadingScreen } from '../../../ui/LoadingScreen'
 import GradientSky from './SkyBox'
+import Trees from './Trees'
 
 
 // Import DebugPanel
@@ -107,6 +108,7 @@ export const Welcome = React.memo(() => {
 
           <Suspense fallback={null}>
             <Floor />
+            <Trees />
             {/* <HouseModel /> */}
             <PhysicsHouse cameraController={cameraControllerRef} />
             <Player
@@ -143,3 +145,4 @@ useGLTF.preload('/models/House_To_Export.glb')
 useFBX.preload('/models/player/idle.fbx')
 useFBX.preload('/models/player/walking.fbx')
 useFBX.preload('/models/player/running.fbx')
+useGLTF.preload('/models/environment/Trees.glb')
