@@ -179,8 +179,7 @@ export const Welcome = React.memo(() => {
 
           <Physics gravity={[0, -9.81, 0]} debug={true}>
             <Floor />
-            {/* <Trees /> */}
-            {/* <HouseModel /> */}
+            <Trees />
             <PhysicsHouse cameraController={cameraControllerRef} />
             <Player
               ref={playerRef}
