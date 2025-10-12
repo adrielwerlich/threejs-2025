@@ -21,6 +21,7 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
   const [collidingMesh, setCollidingMesh] = useState<string | null>(null)
   const [colliderData, setColliderData] = useState<any[]>([])
   const [doorMeshes, setDoorMeshes] = useState<THREE.Mesh[]>([]);
+  const [furnitureMeshes, setFurnitureMeshes] = useState<THREE.Mesh[]>([]);
   const [textVisibility, setTextVisibility] = useState<Record<string, boolean>>({});
   // const [collidingDoor, setCollidingDoor] = useState<React.RefObject<THREE.Group | null> | null>(null);
   const doorGroupRefs = useRef<Record<string, React.RefObject<THREE.Group | null>>>({});
@@ -56,7 +57,7 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
     const doors: THREE.Mesh[] = [];
     const colliders: any[] = []
     const parents: THREE.Object3D[] = [];
-    const furniture: THREE.Object3D[] = [];
+    const furniture: THREE.Mesh[] = [];
 
     scene.traverse((child) => {
 
@@ -88,7 +89,6 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
           }
         }
         else if (child instanceof THREE.Mesh && child.name === 'Door_1' || child.name === 'Door') {
-          debugger;
           doors.push(child);
 
           if (child.parent) {
@@ -101,14 +101,8 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
             }));
           }
         }
-        else if (child instanceof THREE.Object3D && child.name === 'Furniture') {
-
-          debugger;
-          console.log('Found Furniture container:', child);
-          console.log('Furniture children count:', child.children.length);
-
-          // Get all direct children
-          child.children.forEach((furnitureChild, index) => {
+      } else if (child instanceof THREE.Object3D && child.name === 'Furniture') {
+          child.children.forEach((furnitureChild, index)  => {
             console.log(`Furniture child ${index}:`, {
               name: furnitureChild.name,
               type: furnitureChild.type,
@@ -117,29 +111,13 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
               userData: furnitureChild.userData
             });
 
-            furniture.push(furnitureChild);
-
-            // If you need to traverse deeper into each furniture piece
-            // if (furnitureChild.children.length > 0) {
-            //   console.log(`${furnitureChild.name} has ${furnitureChild.children.length} sub-children:`);
-            //   furnitureChild.traverse((subChild) => {
-            //     if (subChild !== furnitureChild) { // Skip the parent itself
-            //       console.log(`  - Sub-child:`, {
-            //         name: subChild.name,
-            //         type: subChild.type,
-            //         isMesh: subChild instanceof THREE.Mesh,
-            //         hasGeometry: subChild instanceof THREE.Mesh ? !!subChild.geometry : false,
-            //         hasMaterial: subChild instanceof THREE.Mesh ? !!subChild.material : false
-            //       });
-            //     }
-            //   });
-            // }
+            furniture.push(furnitureChild as THREE.Mesh);
           });
         }
-      }
 
     })
 
+    setFurnitureMeshes(furniture);
     setWallMeshes(walls)
     setColliderData(colliders)
     setDoorMeshes(doors);
@@ -324,6 +302,40 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
             </React.Fragment>
           );
         })}
+
+        {furnitureMeshes.map((furnitureItem, index) => {
+        // Only create colliders for mesh objects
+        if (!(furnitureItem instanceof THREE.Mesh)) return null;
+
+        const mesh = furnitureItem as THREE.Mesh;
+        const geom = mesh.geometry.clone();
+        geom.applyMatrix4(mesh.matrixWorld);
+        geom.computeBoundingBox();
+        const bbox = geom.boundingBox;
+
+        if (!bbox) return null;
+
+        const size = new THREE.Vector3();
+        bbox.getSize(size);
+        const center = new THREE.Vector3();
+        bbox.getCenter(center);
+
+        const adjustedCenter = new THREE.Vector3(
+          center.x - 12,
+          center.y + 5,
+          center.z - 12
+        );
+
+        return (
+          <RigidBody
+            key={`furniture-${mesh.name}-${index}`}
+            type="fixed"
+            position={adjustedCenter}
+          >
+            <CuboidCollider args={[size.x / 2, size.y / 2, size.z / 2]} />
+          </RigidBody>
+        );
+      })}
       </group>
     </>
   )
