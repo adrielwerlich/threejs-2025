@@ -13,7 +13,7 @@ export interface PlayerControls {
   right: boolean
   run: boolean
   toggleCamera: boolean
-  toggleDebug: boolean
+  togglePhysicsDebug: boolean
   useOrbitControls: boolean
 }
 

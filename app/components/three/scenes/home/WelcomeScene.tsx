@@ -60,7 +60,7 @@ export const Welcome = React.memo(() => {
   const cameraControllerRef = useRef<CameraControllerRef>(null)
   const [contextLost, setContextLost] = useState(false)
 
-  const { useOrbitControls } = controls
+  const { useOrbitControls, togglePhysicsDebug } = controls
 
 
   // useEffect(() => {
@@ -177,7 +177,7 @@ export const Welcome = React.memo(() => {
             shadow-camera-bottom={-10}
           />
 
-          <Physics gravity={[0, -9.81, 0]} debug={false}>
+          <Physics gravity={[0, -9.81, 0]} debug={togglePhysicsDebug ? true : false}>
             <Floor />
             <Trees />
             <PhysicsHouse cameraController={cameraControllerRef} />

@@ -9,7 +9,7 @@
 //     right: false,
 //     run: false,
 //     toggleCamera: false,
-//     toggleDebug: false,
+//     togglePhysicsDebug: false,
 //     useOrbitControls: false,
 //   })
 
@@ -40,7 +40,7 @@
 //           setControls(prev => ({ ...prev, toggleCamera: true }))
 //           break
 //         case 'KeyX':
-//           setControls(prev => ({ ...prev, toggleDebug: !prev.toggleDebug }))
+//           setControls(prev => ({ ...prev, togglePhysicsDebug: !prev.togglePhysicsDebug }))
 //           break
 //         case 'KeyP':
 //           setControls(prev => ({ ...prev, useOrbitControls: !prev.useOrbitControls }))
@@ -99,7 +99,7 @@ export function usePlayerInput() {
     right: false,
     run: false,
     toggleCamera: false,
-    toggleDebug: false,
+    togglePhysicsDebug: false,
     useOrbitControls: false,
   })
 
@@ -130,7 +130,7 @@ export function usePlayerInput() {
         setControls(prev => ({ ...prev, toggleCamera: true }))
         break
       case 'KeyX':
-        setControls(prev => ({ ...prev, toggleDebug: true }))
+        setControls(prev => ({ ...prev, togglePhysicsDebug: !prev.togglePhysicsDebug }))
         break
       case 'KeyP':
         setControls(prev => ({ ...prev, useOrbitControls: !prev.useOrbitControls })) // Toggle behavior
@@ -163,9 +163,9 @@ export function usePlayerInput() {
       case 'KeyC':
         setControls(prev => ({ ...prev, toggleCamera: false }))
         break
-      case 'KeyX':
-        setControls(prev => ({ ...prev, toggleDebug: false }))
-        break
+      // case 'KeyX':
+      //   setControls(prev => ({ ...prev, togglePhysicsDebug: false }))
+      //   break
       // Note: KeyP doesn't set useOrbitControls to false since it's a toggle
     }
   }, [])
@@ -193,7 +193,7 @@ export function usePlayerInput() {
     controls.right,
     controls.run,
     controls.toggleCamera,
-    controls.toggleDebug,
+    controls.togglePhysicsDebug,
     controls.useOrbitControls,
   ])
 }
