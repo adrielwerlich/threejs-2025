@@ -56,6 +56,7 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
     const doors: THREE.Mesh[] = [];
     const colliders: any[] = []
     const parents: THREE.Object3D[] = [];
+    const furniture: THREE.Object3D[] = [];
 
     scene.traverse((child) => {
 
@@ -99,6 +100,41 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
               [child.parent!.uuid]: false
             }));
           }
+        }
+        else if (child instanceof THREE.Object3D && child.name === 'Furniture') {
+
+          debugger;
+          console.log('Found Furniture container:', child);
+          console.log('Furniture children count:', child.children.length);
+
+          // Get all direct children
+          child.children.forEach((furnitureChild, index) => {
+            console.log(`Furniture child ${index}:`, {
+              name: furnitureChild.name,
+              type: furnitureChild.type,
+              position: furnitureChild.position,
+              scale: furnitureChild.scale,
+              userData: furnitureChild.userData
+            });
+
+            furniture.push(furnitureChild);
+
+            // If you need to traverse deeper into each furniture piece
+            // if (furnitureChild.children.length > 0) {
+            //   console.log(`${furnitureChild.name} has ${furnitureChild.children.length} sub-children:`);
+            //   furnitureChild.traverse((subChild) => {
+            //     if (subChild !== furnitureChild) { // Skip the parent itself
+            //       console.log(`  - Sub-child:`, {
+            //         name: subChild.name,
+            //         type: subChild.type,
+            //         isMesh: subChild instanceof THREE.Mesh,
+            //         hasGeometry: subChild instanceof THREE.Mesh ? !!subChild.geometry : false,
+            //         hasMaterial: subChild instanceof THREE.Mesh ? !!subChild.material : false
+            //       });
+            //     }
+            //   });
+            // }
+          });
         }
       }
 
@@ -230,17 +266,17 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
           let adjustedCenter;
           if (mesh.name === 'Door') {
 
-             adjustedCenter = new THREE.Vector3(
+            adjustedCenter = new THREE.Vector3(
               center.x - 3.6,
               center.y + 4.45,
               center.z - 7.765
             );
           } else {
-              adjustedCenter = new THREE.Vector3(
-                center.x - 11.45,
-                center.y + 4.45,
-                center.z - 9.7
-              );
+            adjustedCenter = new THREE.Vector3(
+              center.x - 11.45,
+              center.y + 4.45,
+              center.z - 9.7
+            );
           }
 
           const doorParent = mesh.parent;

@@ -133,7 +133,7 @@ export const Player = forwardRef<THREE.Group, PlayerProps>(
 
           const currentPosition = actualRigidBodyRef.current.translation();
           actualRigidBodyRef.current.setTranslation({
-            x: currentPosition.x - 0.1,
+            x: currentPosition.x ,
             y: currentPosition.y,
             z: currentPosition.z,
           });
