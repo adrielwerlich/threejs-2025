@@ -177,7 +177,7 @@ export const Welcome = React.memo(() => {
             shadow-camera-bottom={-10}
           />
 
-          <Physics gravity={[0, -9.81, 0]} debug={true}>
+          <Physics gravity={[0, -9.81, 0]} debug={false}>
             <Floor />
             <Trees />
             <PhysicsHouse cameraController={cameraControllerRef} />
