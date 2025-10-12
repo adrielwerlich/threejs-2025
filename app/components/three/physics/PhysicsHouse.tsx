@@ -15,7 +15,8 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
 
 
   const [isFirstPersonMode, setIsFirstPersonMode] = useState(false)
-  const { scene } = useGLTF('/models/House_To_Export.glb')
+  // const { scene } = useGLTF('/models/House_To_Export.glb')
+  const { scene } = useGLTF('/models/House_To_Export_2.glb')
   const [wallMeshes, setWallMeshes] = useState<THREE.Mesh[]>([])
   const [collidingMesh, setCollidingMesh] = useState<string | null>(null)
   const [colliderData, setColliderData] = useState<any[]>([])
@@ -57,6 +58,9 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
     const parents: THREE.Object3D[] = [];
 
     scene.traverse((child) => {
+
+      console.log(child.type, child.name);
+
       if (child instanceof THREE.Mesh) {
 
         if (child.name.toLowerCase().includes('wall') && !child.name.toLowerCase().includes('door')) {
@@ -82,7 +86,8 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
             })
           }
         }
-        else if (child instanceof THREE.Mesh && child.name === 'Door_1') {
+        else if (child instanceof THREE.Mesh && child.name === 'Door_1' || child.name === 'Door') {
+          debugger;
           doors.push(child);
 
           if (child.parent) {
@@ -221,15 +226,24 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
           const center = new THREE.Vector3();
           bbox.getCenter(center);
 
-          const adjustedCenter = new THREE.Vector3(
-            center.x - 3.61,
-            center.y + 4.45,
-            center.z - 7.765
-          );
+
+          let adjustedCenter;
+          if (mesh.name === 'Door') {
+
+             adjustedCenter = new THREE.Vector3(
+              center.x - 3.6,
+              center.y + 4.45,
+              center.z - 7.765
+            );
+          } else {
+              adjustedCenter = new THREE.Vector3(
+                center.x - 11.45,
+                center.y + 4.45,
+                center.z - 9.7
+              );
+          }
 
           const doorParent = mesh.parent;
-          const doorGroupRef = doorGroupRefs.current[mesh.name];
-
           const isDoorOpen = doorParent ? doorStates[doorParent.uuid] : false;
 
           let rigidBodySize: [number, number, number];

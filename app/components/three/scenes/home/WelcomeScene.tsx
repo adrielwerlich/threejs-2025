@@ -58,57 +58,128 @@ export const Welcome = React.memo(() => {
   const playerRigidBodyRef = useRef<any>(null)
   const controls = usePlayerInput()
   const cameraControllerRef = useRef<CameraControllerRef>(null)
+  const [contextLost, setContextLost] = useState(false)
 
   const { useOrbitControls } = controls
 
 
+  // useEffect(() => {
+  //   const canvas = document.querySelector('canvas');
+  //   canvas?.addEventListener('webglcontextlost', (event) => {
+  //     console.error('WebGL context lost:', event);
+  //   });
+  // }, []);
+
   useEffect(() => {
     const canvas = document.querySelector('canvas');
-    canvas?.addEventListener('webglcontextlost', (event) => {
+
+    const handleContextLost = (event: Event) => {
       console.error('WebGL context lost:', event);
-    });
+      event.preventDefault(); // Prevent default handling
+      setContextLost(true)
+    };
+
+    const handleContextRestored = (event: Event) => {
+      console.log('WebGL context restored:', event);
+      setContextLost(false)
+      // Optionally reload the page or reinitialize resources
+      window.location.reload()
+    };
+
+    canvas?.addEventListener('webglcontextlost', handleContextLost);
+    canvas?.addEventListener('webglcontextrestored', handleContextRestored);
+
+    return () => {
+      canvas?.removeEventListener('webglcontextlost', handleContextLost);
+      canvas?.removeEventListener('webglcontextrestored', handleContextRestored);
+    };
   }, []);
 
-
-  console.log('useOrbitControls',useOrbitControls)
+  if (contextLost) {
+    return (
+      <div style={{
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        textAlign: 'center',
+        color: 'white',
+        backgroundColor: 'rgba(0,0,0,0.8)',
+        padding: '20px',
+        borderRadius: '10px'
+      }}>
+        <h2>WebGL Context Lost</h2>
+        <p>The 3D graphics context was lost. This may be due to:</p>
+        <ul style={{ textAlign: 'left' }}>
+          <li>GPU memory exhaustion</li>
+          <li>Large model size</li>
+          <li>Browser resource limits</li>
+        </ul>
+        <button onClick={() => window.location.reload()}>
+          Reload Application
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div id="canvas-container" style={{ width: '100vw', height: '100vh' }}>
       {/* <DebugPanel playerRef={playerRef} rigidBodyRef={null} controls={controls} /> */}
 
-      <LoadingManager />
-      <Canvas
-        shadows
-        camera={{
-          fov: 50
-        }}>
+      <Suspense fallback={<LoadingManager />}>
+        <Canvas
+          shadows
+          camera={{
+            fov: 50
+          }}
+          gl={{
+            // Add these WebGL context settings
+            powerPreference: "high-performance",
+            antialias: false, // Disable for better performance
+            preserveDrawingBuffer: false,
+            failIfMajorPerformanceCaveat: false,
+            alpha: false,
+            depth: true,
+            stencil: false,
+          }}
+          onCreated={({ gl }) => {
+            // Optimize renderer settings
+            gl.shadowMap.enabled = true
+            gl.shadowMap.type = THREE.PCFSoftShadowMap
+            // gl.outputEncoding = THREE.sRGBEncoding
+            gl.toneMapping = THREE.ACESFilmicToneMapping
+            gl.toneMappingExposure = 1.0
 
-        <CameraSetup />
+            // Set maximum texture size to prevent memory issues
+            const maxTextureSize = Math.min(gl.capabilities.maxTextureSize, 2048)
+            console.log('Max texture size:', maxTextureSize)
+          }}
+        >
 
-        <GradientSky />
+          <CameraSetup />
 
-        <ambientLight intensity={0.3} />
-        <directionalLight
-          position={[10, 10, 5]}
-          intensity={1}
-          color="#FFF8DC" // Warm sunlight
-          // shadow-mapSize-width={1024}
-          // shadow-mapSize-height={1024}
-          castShadow
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
-          shadow-camera-far={50}
-          shadow-camera-left={-10}
-          shadow-camera-right={10}
-          shadow-camera-top={10}
-          shadow-camera-bottom={-10}
-        />
+          <GradientSky />
 
-        <Physics gravity={[0, -9.81, 0]} debug={false}>
+          <ambientLight intensity={0.3} />
+          <directionalLight
+            position={[10, 10, 5]}
+            intensity={1}
+            color="#FFF8DC" // Warm sunlight
+            // shadow-mapSize-width={1024}
+            // shadow-mapSize-height={1024}
+            castShadow
+            shadow-mapSize-width={2048}
+            shadow-mapSize-height={2048}
+            shadow-camera-far={50}
+            shadow-camera-left={-10}
+            shadow-camera-right={10}
+            shadow-camera-top={10}
+            shadow-camera-bottom={-10}
+          />
 
-          <Suspense fallback={null}>
+          <Physics gravity={[0, -9.81, 0]} debug={true}>
             <Floor />
-            <Trees />
+            {/* <Trees /> */}
             {/* <HouseModel /> */}
             <PhysicsHouse cameraController={cameraControllerRef} />
             <Player
@@ -124,24 +195,27 @@ export const Welcome = React.memo(() => {
                 rigidBodyTarget={playerRigidBodyRef}
               />
             )}
-          </Suspense>
-        </Physics>
+          </Physics>
 
-        {useOrbitControls && (
-          <OrbitControls
-            enablePan={true}
-            enableZoom={true}
-            enableRotate={true}
-            target={[1, -3, 0]}
-          />
-        )}
-      </Canvas>
+          {useOrbitControls && (
+            <OrbitControls
+              enablePan={true}
+              enableZoom={true}
+              enableRotate={true}
+              target={[1, -3, 0]}
+            />
+          )}
+        </Canvas>
+      </Suspense>
+
+
     </div>
   );
 })
 
 // Preload models
-useGLTF.preload('/models/House_To_Export.glb')
+// useGLTF.preload('/models/House_To_Export.glb')
+useGLTF.preload('/models/House_To_Export_2.glb')
 useFBX.preload('/models/player/idle.fbx')
 useFBX.preload('/models/player/walking.fbx')
 useFBX.preload('/models/player/running.fbx')

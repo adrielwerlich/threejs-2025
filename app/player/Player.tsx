@@ -131,12 +131,12 @@ export const Player = forwardRef<THREE.Group, PlayerProps>(
         colliders={false}
         onCollisionEnter={(event) => {
 
-          // const currentPosition = actualRigidBodyRef.current.translation();
-          // actualRigidBodyRef.current.setTranslation({
-          //   x: currentPosition.x - 0.1,
-          //   y: currentPosition.y,
-          //   z: currentPosition.z,
-          // });
+          const currentPosition = actualRigidBodyRef.current.translation();
+          actualRigidBodyRef.current.setTranslation({
+            x: currentPosition.x - 0.1,
+            y: currentPosition.y,
+            z: currentPosition.z,
+          });
         }}
         onCollisionExit={(event) => {
           console.log(`Player Collision ended with: ${event.collider}`);
