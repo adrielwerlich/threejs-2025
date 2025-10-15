@@ -12,27 +12,23 @@ interface PhysicsHouseProps {
 
 
 export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps) => {
-
-
   const [isFirstPersonMode, setIsFirstPersonMode] = useState(false)
-  // const { scene } = useGLTF('/models/House_To_Export.glb')
   const { scene } = useGLTF('/models/House_To_Export_2.glb')
   const [wallMeshes, setWallMeshes] = useState<THREE.Mesh[]>([])
   const [collidingMesh, setCollidingMesh] = useState<string | null>(null)
-  const [colliderData, setColliderData] = useState<any[]>([])
+  const [windowSide, setWindowSide] = useState<string | null>(null)
   const [doorMeshes, setDoorMeshes] = useState<THREE.Mesh[]>([]);
   const [furnitureMeshes, setFurnitureMeshes] = useState<THREE.Mesh[]>([]);
+  const [windowMeshes, setWindowMeshes] = useState<THREE.Mesh[]>([]);
   const [textVisibility, setTextVisibility] = useState<Record<string, boolean>>({});
-  // const [collidingDoor, setCollidingDoor] = useState<React.RefObject<THREE.Group | null> | null>(null);
-  const doorGroupRefs = useRef<Record<string, React.RefObject<THREE.Group | null>>>({});
-
   const [collidingDoor, setCollidingDoor] = useState<THREE.Object3D | null>(null);
-  const [doorParents, setDoorParents] = useState<THREE.Object3D[]>([]);
+  const [collidingWindow, setCollidingWindow] = useState<THREE.Object3D | null>(null);
+  // const [doorParents, setDoorParents] = useState<THREE.Object3D[]>([]);
   const [doorStates, setDoorStates] = useState<Record<string, boolean>>({});
+  const [windowStates, setWindowStates] = useState<Record<string, boolean>>({});
 
   const shouldShowOverlay = Object.values(textVisibility).some(visible => visible) && isFirstPersonMode
   const overlayText = shouldShowOverlay ? 'Press E to Open/Close' : ''
-
 
   useFrame(() => {
     const currentMode = cameraController?.current?.isFirstPerson() || false
@@ -43,14 +39,18 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      if (event.key === 'e' && collidingDoor) {
-        // toggleDoor(collidingDoor.current);
-        toggleDoor(collidingDoor);
+      if (event.key === 'e') {
+        if (collidingDoor) {
+          toggleDoor(collidingDoor);
+        } else if (collidingWindow) {
+          openCloseWindow(collidingWindow);
+        }
       }
     };
+
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [collidingDoor]);
+  }, [collidingDoor, collidingWindow]);
 
   useEffect(() => {
     const walls: THREE.Mesh[] = []
@@ -58,10 +58,11 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
     const colliders: any[] = []
     const parents: THREE.Object3D[] = [];
     const furniture: THREE.Mesh[] = [];
+    const windows: THREE.Mesh[] = [];
 
     scene.traverse((child) => {
 
-      console.log(child.type, child.name);
+      // console.log(child.type, child.name);
 
       if (child instanceof THREE.Mesh) {
 
@@ -88,7 +89,7 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
             })
           }
         }
-        else if (child instanceof THREE.Mesh && child.name === 'Door_1' || child.name === 'Door') {
+        else if (child.name === 'Door_1' || child.name === 'Door') {
           doors.push(child);
 
           if (child.parent) {
@@ -101,34 +102,31 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
             }));
           }
         }
-      } else if (child instanceof THREE.Object3D && child.name === 'Furniture') {
-          child.children.forEach((furnitureChild, index)  => {
-            console.log(`Furniture child ${index}:`, {
-              name: furnitureChild.name,
-              type: furnitureChild.type,
-              position: furnitureChild.position,
-              scale: furnitureChild.scale,
-              userData: furnitureChild.userData
-            });
 
-            furniture.push(furnitureChild as THREE.Mesh);
-          });
+        if (
+          child.name.toLowerCase().includes('open_close_object')
+        ) {
+          // console.log('Found window mesh:', child.name, child);
+          windows.push(child);
         }
+      } else if (child instanceof THREE.Object3D && child.name === 'Furniture') {
+        child.children.forEach((furnitureChild, index) => {
+          furniture.push(furnitureChild as THREE.Mesh);
+        });
+      }
 
     })
 
+    console.log('Total windows found:', windows);
+
+    setWindowMeshes(windows);
     setFurnitureMeshes(furniture);
     setWallMeshes(walls)
-    setColliderData(colliders)
+    // setColliderData(colliders)
     setDoorMeshes(doors);
-    setDoorParents(parents);
+    // setDoorParents(parents);
 
   }, [scene]);
-
-  const toggleTextVisibility = (doorName: string, isVisible: boolean) => {
-    setTextVisibility((prev) => ({ ...prev, [doorName]: isVisible }));
-  };
-
 
   const FacingText = ({ position, text }:
     { position: [number, number, number]; text: string }) => {
@@ -155,6 +153,38 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
         {text}
       </Text>
     );
+  };
+
+  // useEffect(() => {
+  //   const initialWindowStates: Record<string, boolean> = {};
+  //   windowMeshes.forEach(window => {
+  //     initialWindowStates[window.uuid] = false;
+  //   });
+  //   setWindowStates(initialWindowStates);
+  // }, [windowMeshes]);
+
+  const openCloseWindow = (windowMesh: THREE.Object3D) => {
+
+    const isOpen = windowStates[windowMesh.uuid] || false;
+
+    if (windowMesh.parent) {
+      if (windowSide === 'left') {
+        if (isOpen && windowMesh.position.x <= 70) {
+          windowMesh.position.x += 70
+        } else {
+          windowMesh.position.x -= 70
+        }
+      } else {
+        if (isOpen && windowMesh.position.x >= -70) {
+          windowMesh.position.x -= 70
+        } else {
+          windowMesh.position.x += 70
+        }
+      }
+    }
+
+    windowStates[windowMesh.uuid] = !isOpen;
+
   };
 
   const toggleDoor = (doorParent: THREE.Object3D) => {
@@ -276,9 +306,7 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
                 type="fixed"
                 position={adjustedCenter}
                 onCollisionEnter={() => {
-
                   setTextVisibility((prev) => ({ ...prev, [mesh.name]: true }));
-                  // setCollidingDoor(doorGroupRef);
                   setCollidingDoor(doorParent);
                   setCollidingMesh(mesh.name);
                 }}
@@ -295,7 +323,7 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
                 {textVisibility[mesh.name] && !isFirstPersonMode && (
                   <FacingText
                     position={[adjustedCenter.x, adjustedCenter.y + size.y + 0.5, adjustedCenter.z]}
-                    text={'Press E to Open/Close'}
+                    text={'Press E to Open/Close the door'}
                   />
                 )}
               </RigidBody>
@@ -304,38 +332,114 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
         })}
 
         {furnitureMeshes.map((furnitureItem, index) => {
-        // Only create colliders for mesh objects
-        if (!(furnitureItem instanceof THREE.Mesh)) return null;
+          // Only create colliders for mesh objects
+          if (!(furnitureItem instanceof THREE.Mesh)) return null;
 
-        const mesh = furnitureItem as THREE.Mesh;
-        const geom = mesh.geometry.clone();
-        geom.applyMatrix4(mesh.matrixWorld);
-        geom.computeBoundingBox();
-        const bbox = geom.boundingBox;
+          const mesh = furnitureItem as THREE.Mesh;
+          const geom = mesh.geometry.clone();
+          geom.applyMatrix4(mesh.matrixWorld);
+          geom.computeBoundingBox();
+          const bbox = geom.boundingBox;
 
-        if (!bbox) return null;
+          if (!bbox) return null;
 
-        const size = new THREE.Vector3();
-        bbox.getSize(size);
-        const center = new THREE.Vector3();
-        bbox.getCenter(center);
+          const size = new THREE.Vector3();
+          bbox.getSize(size);
+          const center = new THREE.Vector3();
+          bbox.getCenter(center);
 
-        const adjustedCenter = new THREE.Vector3(
-          center.x - 12,
-          center.y + 5,
-          center.z - 12
-        );
+          const adjustedCenter = new THREE.Vector3(
+            center.x - 12,
+            center.y + 5,
+            center.z - 12
+          );
 
-        return (
-          <RigidBody
-            key={`furniture-${mesh.name}-${index}`}
-            type="fixed"
-            position={adjustedCenter}
-          >
-            <CuboidCollider args={[size.x / 2, size.y / 2, size.z / 2]} />
-          </RigidBody>
-        );
-      })}
+          return (
+            <RigidBody
+              key={`window-${mesh.name}-${index}`}
+              type="fixed"
+              position={adjustedCenter}
+            >
+              <CuboidCollider args={[size.x / 2, size.y / 2, size.z / 2]} />
+            </RigidBody>
+          );
+        })}
+
+        {windowMeshes.map((windowItem, index) => {
+          // Only create colliders for mesh objects
+          if (!(windowItem instanceof THREE.Mesh)) return null;
+
+          const mesh = windowItem as THREE.Mesh;
+          const geom = mesh.geometry.clone();
+          geom.applyMatrix4(mesh.matrixWorld);
+          geom.computeBoundingBox();
+          const bbox = geom.boundingBox;
+
+          if (!bbox) return null;
+
+          const size = new THREE.Vector3();
+          bbox.getSize(size);
+          const center = new THREE.Vector3();
+          bbox.getCenter(center);
+
+          const adjustedCenter = new THREE.Vector3(
+            center.x - 12,
+            center.y + 5,
+            center.z - 12
+          );
+
+          // debugger;
+          // console.log(mesh, mesh.parent)
+
+          let meshNameUserFriendly, side;
+          if (mesh.name.toLowerCase().includes('leftside')) {
+            meshNameUserFriendly = 'Left Side Window';
+            side = 'left';
+          } else {
+            meshNameUserFriendly = 'Right Side Window';
+            side = 'right';
+          }
+
+          return (
+            <RigidBody
+              key={`window-${mesh.name}-${index}`}
+              type="fixed"
+              position={adjustedCenter}
+              sensor={true}
+              onIntersectionEnter={() => {
+                const allTextHidden = Object.values(textVisibility).every(visible => !visible);
+                if (allTextHidden) {
+                  setTextVisibility((prev) => ({ ...prev, [mesh.name]: true }));
+                  setTextVisibility((prev) => ({ ...prev, [mesh.name]: true }));
+                  if (!collidingWindow) {
+                    setCollidingWindow(mesh.parent);
+                    setWindowSide(side);
+                    console.log('Intersecting with window:', mesh);
+                  }
+                }
+              }}
+              onIntersectionExit={() => {
+                setTextVisibility((prev) => ({ ...prev, [mesh.name]: false }));
+                setCollidingWindow(null);
+                console.log('Intersection with window ended');
+              }}
+            >
+              <CuboidCollider args={[size.x * 6, size.y / 2, size.z / 5]} />
+
+              {textVisibility[mesh.name] && !isFirstPersonMode && (
+                <FacingText
+                  // position={[adjustedCenter.x, adjustedCenter.y + size.y - 0.5, adjustedCenter.z + 12]}
+                  position={[
+                    mesh.position.x,
+                    mesh.position.y + size.y + 0.5,
+                    mesh.position.z
+                  ]}
+                  text={`Press E to Open/Close the ${meshNameUserFriendly}`}
+                />
+              )}
+            </RigidBody>
+          );
+        })}
       </group>
     </>
   )

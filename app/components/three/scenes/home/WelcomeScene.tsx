@@ -160,7 +160,7 @@ export const Welcome = React.memo(() => {
 
           <GradientSky />
 
-          <ambientLight intensity={0.3} />
+          <ambientLight intensity={0.9} />
           <directionalLight
             position={[10, 10, 5]}
             intensity={1}
