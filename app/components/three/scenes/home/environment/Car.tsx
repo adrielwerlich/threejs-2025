@@ -44,7 +44,7 @@ export const Car: React.FC<CarProps> = ({
 
   // Vehicle physics parameters
   const vehicleParams = useRef({
-    engineForce: 1500,
+    engineForce: 500,
     maxSteerValue: 5,
     maxBrakeForce: 50,
     wheelRadius: 0.4,
