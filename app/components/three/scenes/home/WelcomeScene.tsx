@@ -10,17 +10,21 @@ import React, { Suspense, useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { Player } from '../../../../player/Player'
 import { CameraController, type CameraControllerRef } from '../../../../player/CameraController'
+import { Parking } from "./environment/index"
 import { PhysicsHouse } from '../../physics/PhysicsHouse'
 import { LoadingScreen } from '../../../ui/LoadingScreen'
 import GradientSky from './SkyBox'
 import Trees from './Trees'
 
+import {
+  resetState
+} from '../../../../store/slices/carSlice'
 
 // Import DebugPanel
 import { DebugPanel } from '../../../../player/useDebugPanel'
 
 import { usePlayerInput } from '../../../../player/usePlayerInput'
-
+import { useAppDispatch, useAppSelector } from '../../../../store/hooks'
 import Floor from './Floor'
 
 function CameraSetup() {
@@ -59,6 +63,13 @@ export const Welcome = React.memo(() => {
   const controls = usePlayerInput()
   const cameraControllerRef = useRef<CameraControllerRef>(null)
   const [contextLost, setContextLost] = useState(false)
+  const carState = useAppSelector((state: any) => state.car)
+
+  const dispatch = useAppDispatch()
+  useEffect(() => {
+    dispatch(resetState())
+  }, [dispatch])
+
 
   const { useOrbitControls, togglePhysicsDebug } = controls
 
@@ -152,7 +163,7 @@ export const Welcome = React.memo(() => {
 
             // Set maximum texture size to prevent memory issues
             const maxTextureSize = Math.min(gl.capabilities.maxTextureSize, 2048)
-            console.log('Max texture size:', maxTextureSize)
+            // console.log('Max texture size:', maxTextureSize)
           }}
         >
 
@@ -179,14 +190,23 @@ export const Welcome = React.memo(() => {
 
           <Physics gravity={[0, -9.81, 0]} debug={togglePhysicsDebug ? true : false}>
             <Floor />
-            <Trees />
+            <Parking position={[3.6, -4.99, -15]} />
+            {/* <Trees /> */}
             <PhysicsHouse cameraController={cameraControllerRef} />
-            <Player
-              ref={playerRef}
-              rigidBodyRef={playerRigidBodyRef}
-              position={[5, -4.95, 5]}
-              cameraController={cameraControllerRef} // Pass camera ref
-            />
+
+            {!carState.isDriving && (
+              <Player
+                ref={playerRef}
+                rigidBodyRef={playerRigidBodyRef}
+                position={
+                  carState.wasDriving ? 
+                  [carState.exitPosition[0], -4.99, carState.exitPosition[2]] : 
+                  [10, -4.99, -15]
+                }
+                // position={[5, -4.95, 5]}
+                cameraController={cameraControllerRef} // Pass camera ref
+              />
+            )}
             {!useOrbitControls && (
               <CameraController
                 ref={cameraControllerRef}

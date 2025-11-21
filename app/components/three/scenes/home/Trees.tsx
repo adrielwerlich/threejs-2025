@@ -35,6 +35,7 @@ export default function Trees() {
     <primitive 
       object={treeScene} 
       position={[0, -5, 0]} // Adjust position as needed
+      rotation={[0, Math.PI / 6, 0]} // Adjust rotation as needed  
       scale={[1, 1, 1]} // Adjust scale as needed
     />
   )

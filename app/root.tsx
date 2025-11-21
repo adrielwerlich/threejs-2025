@@ -11,6 +11,7 @@ import type { Route } from "./+types/root";
 import "./app.css";
 import AppThemeProvider from "./components/ui/ThemeProvider";
 import AppLayout from "./components/layout/Layout";
+import { ReduxProvider } from "./store/provider/ReduxProvider";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -39,9 +40,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        <AppThemeProvider>
-          {children}
-        </AppThemeProvider>
+        <ReduxProvider>
+          <AppThemeProvider>
+            {children}
+          </AppThemeProvider>
+        </ReduxProvider>
         <ScrollRestoration />
         <Scripts />
       </body>

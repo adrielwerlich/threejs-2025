@@ -1,4 +1,4 @@
-import { Billboard, Text, useGLTF } from '@react-three/drei'
+import { Text, useGLTF } from '@react-three/drei'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import * as THREE from 'three'
 import React, { useEffect, useState, useRef } from 'react'
@@ -117,14 +117,10 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
 
     })
 
-    console.log('Total windows found:', windows);
-
     setWindowMeshes(windows);
     setFurnitureMeshes(furniture);
     setWallMeshes(walls)
-    // setColliderData(colliders)
     setDoorMeshes(doors);
-    // setDoorParents(parents);
 
   }, [scene]);
 
@@ -155,13 +151,6 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
     );
   };
 
-  // useEffect(() => {
-  //   const initialWindowStates: Record<string, boolean> = {};
-  //   windowMeshes.forEach(window => {
-  //     initialWindowStates[window.uuid] = false;
-  //   });
-  //   setWindowStates(initialWindowStates);
-  // }, [windowMeshes]);
 
   const openCloseWindow = (windowMesh: THREE.Object3D) => {
 
@@ -245,10 +234,10 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
               type="fixed"
               position={adjustedCenter}
               onCollisionEnter={(event) => {
-                console.log(`Collision started with: ${event.collider}`);
+                // console.log(`Collision started with: ${event.collider}`);
               }}
               onCollisionExit={(event) => {
-                console.log(`Collision ended with: ${event.collider}`);
+                // console.log(`Collision ended with: ${event.collider}`);
               }}
               mass={1}
             >
@@ -388,9 +377,6 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
             center.z - 12
           );
 
-          // debugger;
-          // console.log(mesh, mesh.parent)
-
           let meshNameUserFriendly, side;
           if (mesh.name.toLowerCase().includes('leftside')) {
             meshNameUserFriendly = 'Left Side Window';
@@ -414,21 +400,18 @@ export const PhysicsHouse = React.memo(({ cameraController }: PhysicsHouseProps)
                   if (!collidingWindow) {
                     setCollidingWindow(mesh.parent);
                     setWindowSide(side);
-                    console.log('Intersecting with window:', mesh);
                   }
                 }
               }}
               onIntersectionExit={() => {
                 setTextVisibility((prev) => ({ ...prev, [mesh.name]: false }));
                 setCollidingWindow(null);
-                console.log('Intersection with window ended');
               }}
             >
               <CuboidCollider args={[size.x * 6, size.y / 2, size.z / 5]} />
 
               {textVisibility[mesh.name] && !isFirstPersonMode && (
                 <FacingText
-                  // position={[adjustedCenter.x, adjustedCenter.y + size.y - 0.5, adjustedCenter.z + 12]}
                   position={[
                     mesh.position.x,
                     mesh.position.y + size.y + 0.5,

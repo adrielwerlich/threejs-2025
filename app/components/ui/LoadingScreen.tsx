@@ -28,7 +28,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ progress = 0 }) =>
         <div className="loading-tips">
           <p>💡 Use arrow keys to move around</p>
           <p>🎥 Press C to toggle camera perspective (First person vs Third Person)</p>
-          <p>🚪 Press E to interact with doors</p>
+          <p>🚪 Press E to interact with doors and windows</p>
           <p>🎮 Press P to toggle orbit controls or third person perspective</p>
           <p>🔧 Press X to toggle physics debug mode</p>
         </div>
