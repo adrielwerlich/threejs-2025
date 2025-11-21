@@ -29,6 +29,10 @@ export const Car: React.FC<CarProps> = ({
   const [textVisibility, setTextVisibility] = useState(false)
   const [startupFinished, setStartupFinished] = useState(false)
 
+  const lastUpdateTime = useRef(0)
+  const UPDATE_INTERVAL = 1000 / 30 // 30 FPS for Redux updates
+
+
   // Refs
   const chassisRef = useRef<any>(null)
   const carGroupRef = useRef<THREE.Group>(null)
@@ -237,7 +241,7 @@ export const Car: React.FC<CarProps> = ({
   }
 
   // Apply vehicle physics each frame
-  useFrame(() => {
+  useFrame((state) => {
     if (!carState.isDriving || !chassisRef.current) return
 
     const { forward, backward, left, right, brake } = controls.current
@@ -318,16 +322,19 @@ export const Car: React.FC<CarProps> = ({
     }
 
     // Apply steering (angular velocity)
-    if (steerValue !== 0 && (forward || backward)) {
+    if (steerValue !== 0) {
       const speed = Math.sqrt(
         currentVelocity.x ** 2 + currentVelocity.z ** 2
       )
-      const steerForce = steerValue * Math.min(speed * 0.1, 1)
+
+      const minSteerForce = 0.05 // Base steering force even when stopped
+      const speedBasedSteer = Math.min(speed * 0.1, 1)
+      const steerForce = steerValue * Math.max(speedBasedSteer, minSteerForce)
 
       chassisRef.current.applyTorqueImpulse(
         {
           x: 0,
-          y: steerForce * (forward ? 1 : -1),
+          y: steerForce * (forward ? 1 : backward ? -1 : 1), // Still reverse direction when backing up
           z: 0,
         },
         true
@@ -336,29 +343,63 @@ export const Car: React.FC<CarProps> = ({
 
     // Apply braking
     if (brake) {
+      const speed = Math.sqrt(
+        currentVelocity.x ** 2 + currentVelocity.z ** 2
+      )
+
+      // Progressive braking - stronger at higher speeds
+      const brakeForce = 0.96 // 0.95 = moderate braking, 0.98 = gentle, 0.92 = aggressive
+
       chassisRef.current.setLinvel(
         {
-          x: currentVelocity.x * 0.95,
+          x: currentVelocity.x * brakeForce,
           y: currentVelocity.y,
-          z: currentVelocity.z * 0.95,
+          z: currentVelocity.z * brakeForce,
+        },
+        true
+      )
+
+      // Also slow down rotation when braking
+      const currentAngularVel = chassisRef.current.angvel()
+      chassisRef.current.setAngvel(
+        {
+          x: currentAngularVel.x * 0.95,
+          y: currentAngularVel.y * 0.95,
+          z: currentAngularVel.z * 0.95,
         },
         true
       )
     }
 
-    // Update Redux with current position and rotation
-    const pos = chassisRef.current.translation()
-    const rot = chassisRef.current.rotation()
-    const euler = new THREE.Euler().setFromQuaternion(
-      new THREE.Quaternion(rot.x, rot.y, rot.z, rot.w)
-    )
+    const now = state.clock.elapsedTime * 1000
+    if (now - lastUpdateTime.current > UPDATE_INTERVAL) {
+      const pos = chassisRef.current.translation()
+      const rot = chassisRef.current.rotation()
+      const euler = new THREE.Euler().setFromQuaternion(
+        new THREE.Quaternion(rot.x, rot.y, rot.z, rot.w)
+      )
 
-    dispatch(
-      updateCarTransform({
+      dispatch(updateCarTransform({
         position: [pos.x, pos.y, pos.z],
         rotation: [euler.x, euler.y, euler.z],
-      })
-    )
+      }))
+
+      lastUpdateTime.current = now
+    }
+
+    // Update Redux with current position and rotation
+    // const pos = chassisRef.current.translation()
+    // const rot = chassisRef.current.rotation()
+    // const euler = new THREE.Euler().setFromQuaternion(
+    //   new THREE.Quaternion(rot.x, rot.y, rot.z, rot.w)
+    // )
+
+    // dispatch(
+    //   updateCarTransform({
+    //     position: [pos.x, pos.y, pos.z],
+    //     rotation: [euler.x, euler.y, euler.z],
+    //   })
+    // )
   })
 
   const FacingText = ({
@@ -401,9 +442,6 @@ export const Car: React.FC<CarProps> = ({
       rotation={rotation}
       colliders={false}
       mass={500}
-      // linearDamping={0.5}
-      // angularDamping={0.5}
-
     >
       <group ref={carGroupRef} scale={scale}>
         <primitive object={scene} />
@@ -412,15 +450,15 @@ export const Car: React.FC<CarProps> = ({
       <CuboidCollider
         args={[1.5, 1, 3.4]}
         position={[position[0] - 26.2, position[1] + 26.8, position[2] - 45.6]}
-        // friction={controls.current.forward ? 2.5 : 0}
-        // restitution={controls.current.forward ? 0.1 : 0}
         onCollisionEnter={() => {
-          if (!carState.isDriving) {
+          if (!carState.isDriving && !textVisibility) {
             setTextVisibility(true)
           }
         }}
         onCollisionExit={() => {
-          setTextVisibility(false)
+          if (textVisibility) { // ✅ Check if already hidden
+            setTextVisibility(false)
+          }
         }}
       />
 
