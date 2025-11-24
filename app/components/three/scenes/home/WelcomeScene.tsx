@@ -46,23 +46,8 @@ CameraSetup.displayName = 'CameraSetup'
 // ✅ Memoize LoadingManager
 const LoadingManager = memo(() => {
   const { progress } = useProgress()
-  const [isLoaded, setIsLoaded] = useState(false)
 
-  // console.log('⏳ LoadingManager render - progress:', progress, 'isLoaded:', isLoaded)
-
-  useEffect(() => {
-    if (progress === 100) {
-      console.log('✅ Loading complete, setting isLoaded after 500ms')
-      const timer = setTimeout(() => setIsLoaded(true), 500)
-      return () => clearTimeout(timer)
-    }
-  }, [progress])
-
-  if (!isLoaded) {
-    return <LoadingScreen progress={progress} />
-  }
-
-  return null
+  return <LoadingScreen progress={progress} />
 })
 LoadingManager.displayName = 'LoadingManager'
 
@@ -206,6 +191,15 @@ export const Welcome = memo(() => {
   const [isReady, setIsReady] = useState(false) // ✅ Add ready state
   const [canvasReady, setCanvasReady] = useState(false) // ✅ Track canvas creation
   const { progress } = useProgress()
+
+  const [isLoaded, setIsLoaded] = useState(false)
+
+  useEffect(() => {
+    if (progress === 100) {
+      const timer = setTimeout(() => setIsLoaded(true), 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [progress])
 
 
   const canvasKeyRef = useRef('canvas-' + Math.random().toString(36).substr(2, 9))
@@ -411,51 +405,33 @@ export const Welcome = memo(() => {
 
   console.log('🏠 Welcome component - isReady:', isReady, 'progress:', progress)
 
-  if (!isReady && progress !== 100 ) {
+  if (!isLoaded) {
     console.log('@@@ progress:', progress)
     return <LoadingManager />
+  } else {
+
+    return (
+      <div id="canvas-container" style={{ width: '100vw', height: '100vh' }}>
+  
+        {/* <Suspense fallback={<LoadingManager />}> */}
+        <Canvas key={canvasKeyRef.current} {...canvasConfig} onCreated={handleCreated}>
+          <SceneContent
+            playerRef={playerRef}
+            playerRigidBodyRef={playerRigidBodyRef}
+            cameraControllerRef={cameraControllerRef}
+            useOrbitControls={useOrbitControls}
+            togglePhysicsDebug={togglePhysicsDebug}
+            isDriving={isDriving}
+            wasDriving={wasDriving}
+            exitPosition={exitPosition}
+          />
+        </Canvas>
+        {/* </Suspense> */}
+      </div>
+    )
   }
 
-  console.log('🏠 Welcome component render END - Returning JSX')
 
-
-  return (
-    <div id="canvas-container" style={{ width: '100vw', height: '100vh' }}>
-      {/* <div style={{
-        position: 'fixed',
-        top: '70px',
-        left: '10px',
-        color: 'white',
-        backgroundColor: 'rgba(0,0,0,0.8)',
-        padding: '10px',
-        borderRadius: '5px',
-        fontSize: '12px',
-        fontFamily: 'monospace',
-        zIndex: 1000,
-        pointerEvents: 'none'
-      }}>
-        <div>🔄 Renders: {renderCount}</div>
-        <div>🎮 Driving: {isDriving ? 'Yes' : 'No'}</div>
-        <div>👁️ Orbit: {useOrbitControls ? 'Yes' : 'No'}</div>
-        <div>🐛 Physics: {togglePhysicsDebug ? 'Yes' : 'No'}</div>
-      </div> */}
-
-      {/* <Suspense fallback={<LoadingManager />}> */}
-      <Canvas key={canvasKeyRef.current} {...canvasConfig} onCreated={handleCreated}>
-        <SceneContent
-          playerRef={playerRef}
-          playerRigidBodyRef={playerRigidBodyRef}
-          cameraControllerRef={cameraControllerRef}
-          useOrbitControls={useOrbitControls}
-          togglePhysicsDebug={togglePhysicsDebug}
-          isDriving={isDriving}
-          wasDriving={wasDriving}
-          exitPosition={exitPosition}
-        />
-      </Canvas>
-      {/* </Suspense> */}
-    </div>
-  )
 })
 
 Welcome.displayName = 'Welcome'
