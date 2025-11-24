@@ -5,12 +5,16 @@ export const store = configureStore({
   reducer: {
     car: carReducer
   },
+  // middleware: (getDefaultMiddleware) =>
+  //   getDefaultMiddleware({
+  //     serializableCheck: {
+  //       // Ignore these action types for serialization check
+  //       ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
+  //     },
+  //   }),
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
-      serializableCheck: {
-        // Ignore these action types for serialization check
-        ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
-      },
+      serializableCheck: false, // Disable if you're storing non-serializable values
     }),
 })
 

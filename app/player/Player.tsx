@@ -45,6 +45,14 @@ export const Player = forwardRef<THREE.Group, PlayerProps>(
     React.useImperativeHandle(ref, () => playerRef.current!, [playerRef.current])
 
 
+    useEffect(() => {
+      if (actualRigidBodyRef.current) {
+        console.log('✅ Player rigid body initialized:', actualRigidBodyRef.current)
+      } else {
+        console.warn('⚠️ Player rigid body is null')
+      }
+    }, [actualRigidBodyRef])
+
     // Handle idle animations
     useEffect(() => {
       if (currentAnimation === 'idle' && idleActions && Object.keys(idleActions).length > 0) {

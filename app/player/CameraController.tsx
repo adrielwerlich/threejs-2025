@@ -14,6 +14,26 @@ interface CameraControllerProps {
 export interface CameraControllerRef {
   isFirstPerson: () => boolean
   getCameraRotation: () => number
+  updatePlayerCamera: (playerPosition: THREE.Vector3, playerRotation: number) => void
+  updateCarCamera: (carPosition: THREE.Vector3, carRotation: number) => void
+  resetCamera: () => void
+}
+
+const isRigidBodyReady = (rigidBody: any): boolean => {
+  if (!rigidBody) return false
+  
+  // Check if handle exists and is valid (not 0 or null)
+  const handle = rigidBody.handle
+  if (handle === undefined || handle === null || handle === 0) {
+    return false
+  }
+  
+  // Verify translation method exists
+  if (typeof rigidBody.translation !== 'function') {
+    return false
+  }
+  
+  return true
 }
 
 export const CameraController = forwardRef<CameraControllerRef, CameraControllerProps>(
@@ -80,6 +100,10 @@ export const CameraController = forwardRef<CameraControllerRef, CameraController
 
     useFrame(() => {
 
+       if (!isRigidBodyReady(rigidBodyTarget?.current)) {
+        return
+      }
+
       if (debug) {
         cameraOffset.current.copy(debugParams.current.playerCameraOffset)
         cameraLookAtOffset.current.copy(debugParams.current.playerLookAtOffset)
@@ -137,33 +161,80 @@ export const CameraController = forwardRef<CameraControllerRef, CameraController
       }
       previousCameraPressed.current = controls.toggleCamera
 
-      const physicsPos = rigidBodyTarget.current.translation()
-      const playerPosition = new THREE.Vector3(physicsPos.x, physicsPos.y, physicsPos.z)
-
-      let targetCameraPosition: THREE.Vector3
-      let targetLookAtPosition: THREE.Vector3
-
-      if (isFirstPerson.current) {
-        targetCameraPosition = playerPosition.clone().add(firstPersonOffset.current)
-        const lookDirection = new THREE.Vector3(0, 0, -1)
-        lookDirection.applyEuler(new THREE.Euler(cameraRotation.current.x, cameraRotation.current.y, 0))
-        targetLookAtPosition = targetCameraPosition.clone().add(lookDirection.multiplyScalar(10))
-      } else {
-        targetCameraPosition = playerPosition.clone().add(cameraOffset.current)
-        targetLookAtPosition = playerPosition.clone().add(cameraLookAtOffset.current)
+      if (!rigidBodyTarget?.current) {
+        console.warn('⚠️ rigidBodyTarget is null, skipping camera update')
+        return
       }
 
-      const lerpFactor = isFirstPerson.current ? 0.1 : 0.05
-      currentCameraPosition.current.lerp(targetCameraPosition, lerpFactor)
-      currentLookAtPosition.current.lerp(targetLookAtPosition, lerpFactor)
+      try {
+        // ✅ Check if translation method exists
+        if (typeof rigidBodyTarget?.current?.translation !== 'function') return;
 
-      camera.position.copy(currentCameraPosition.current)
-      camera.lookAt(currentLookAtPosition.current)
+        const translation = rigidBodyTarget.current.translation?.()
+
+        if (!translation) {
+          console.warn('⚠️ translation() returned null')
+          return
+        }
+
+        const playerPosition = new THREE.Vector3(translation.x, translation.y, translation.z)
+
+        let targetCameraPosition: THREE.Vector3
+        let targetLookAtPosition: THREE.Vector3
+
+        if (isFirstPerson.current) {
+          targetCameraPosition = playerPosition.clone().add(firstPersonOffset.current)
+          const lookDirection = new THREE.Vector3(0, 0, -1)
+          lookDirection.applyEuler(new THREE.Euler(cameraRotation.current.x, cameraRotation.current.y, 0))
+          targetLookAtPosition = targetCameraPosition.clone().add(lookDirection.multiplyScalar(10))
+        } else {
+          targetCameraPosition = playerPosition.clone().add(cameraOffset.current)
+          targetLookAtPosition = playerPosition.clone().add(cameraLookAtOffset.current)
+        }
+
+        const lerpFactor = isFirstPerson.current ? 0.1 : 0.05
+        currentCameraPosition.current.lerp(targetCameraPosition, lerpFactor)
+        currentLookAtPosition.current.lerp(targetLookAtPosition, lerpFactor)
+
+        camera.position.copy(currentCameraPosition.current)
+        camera.lookAt(currentLookAtPosition.current)
+      } catch (error) {
+        // ✅ Catch any Rapier/Rust errors silently
+        console.error('❌ Error in updatePlayerCamera:', error)
+      }
     }
 
     useImperativeHandle(ref, () => ({
       isFirstPerson: () => isFirstPerson.current,
-      getCameraRotation: () => cameraRotation.current.y
+      getCameraRotation: () => cameraRotation.current.y,
+      updatePlayerCamera: (playerPosition: THREE.Vector3, playerRotation: number) => {
+        // Manually update camera for external calls
+        const targetCameraPosition = playerPosition.clone().add(cameraOffset.current)
+        const targetLookAtPosition = playerPosition.clone().add(cameraLookAtOffset.current)
+
+        currentCameraPosition.current.lerp(targetCameraPosition, 0.1)
+        currentLookAtPosition.current.lerp(targetLookAtPosition, 0.1)
+
+        camera.position.copy(currentCameraPosition.current)
+        camera.lookAt(currentLookAtPosition.current)
+      },
+      updateCarCamera: (carPosition: THREE.Vector3, carRotation: number) => {
+        // Manually update camera for external calls
+        const carEuler = new THREE.Euler(0, carRotation, 0)
+        const offset = carCameraOffset.current.clone()
+        offset.applyEuler(carEuler)
+        const targetCameraPosition = carPosition.clone().add(offset)
+
+        currentCameraPosition.current.lerp(targetCameraPosition, 0.05)
+        currentLookAtPosition.current.lerp(carPosition, 0.1)
+
+        camera.position.copy(currentCameraPosition.current)
+        camera.lookAt(currentLookAtPosition.current)
+      },
+      resetCamera: () => {
+        camera.position.set(15, 4, 15)
+        camera.lookAt(0, 0, 0)
+      }
     }))
 
     return null

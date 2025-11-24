@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Text, useGLTF } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
-import { RigidBody, useRapier, CuboidCollider } from '@react-three/rapier'
+import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import * as THREE from 'three'
 import { useAppDispatch, useAppSelector } from '../../../../../store/hooks'
 import {
@@ -17,6 +17,55 @@ interface CarProps {
   scale?: number
 }
 
+// ✅ Separate component for the interaction text - won't cause Car to re-render
+const CarInteractionText = ({ isPlayerNearCar, carPosition, isDriving }: { isPlayerNearCar: React.MutableRefObject<boolean>, carPosition: [number, number, number], isDriving: boolean }) => {
+  const { camera } = useThree()
+  const textRef = useRef<THREE.Mesh>(null)
+  const [showText, setShowText] = useState(false)
+
+  useFrame(() => {
+    if (textRef.current) {
+      textRef.current.lookAt(camera.position)
+    }
+  })
+
+  // ✅ This state change only affects THIS component, not the Car
+  const handleCollisionEnter = () => {
+    if (!isDriving && !showText) {
+      setShowText(true)
+    }
+  }
+
+  const handleCollisionExit = () => {
+    if (showText) {
+      setShowText(false)
+    }
+  }
+
+  if (isDriving || !isPlayerNearCar.current) return null
+
+  return (
+    <>
+      {/* <CuboidCollider
+        args={[1.5, 1, 3.4]}
+        position={[carPosition[0] - 26.2, carPosition[1] + 26.8, carPosition[2] - 45.6]}
+        onIntersectionEnter={handleCollisionEnter}
+        onIntersectionExit={handleCollisionExit}
+      /> */}
+      <Text
+        ref={textRef}
+        position={[carPosition[0] - 36.2, carPosition[1] + 15.8, carPosition[2] - 16.6]}
+        fontSize={0.5}
+        color="white"
+        anchorX="center"
+        anchorY="middle"
+      >
+        Press E to Drive the Car
+      </Text>
+    </>
+  )
+}
+
 export const Car: React.FC<CarProps> = ({
   position = [45, -15.38, 3],
   rotation = [0, Math.PI / 2, 0],
@@ -25,24 +74,22 @@ export const Car: React.FC<CarProps> = ({
   const dispatch = useAppDispatch()
   const carState = useAppSelector((state) => state.car)
   const { scene } = useGLTF('/models/vehicles/RacingCar2.gltf')
-  const { camera } = useThree()
-  const [textVisibility, setTextVisibility] = useState(false)
+  
   const [startupFinished, setStartupFinished] = useState(false)
 
   const lastUpdateTime = useRef(0)
-  const UPDATE_INTERVAL = 1000 / 30 // 30 FPS for Redux updates
+  const UPDATE_INTERVAL = 1000 / 30
 
-
-  // Refs
   const chassisRef = useRef<any>(null)
   const carGroupRef = useRef<THREE.Group>(null)
+  const currentRPM = useRef(0.5)
 
-  // Engine sound refs
   const startupSoundRef = useRef<HTMLAudioElement | null>(null)
-  const idleSoundRef = useRef<HTMLAudioElement | null>(null)
-  const accelerationSoundRef = useRef<HTMLAudioElement | null>(null)
+  const engineSoundRef = useRef<HTMLAudioElement | null>(null)
 
-  // Vehicle physics parameters
+  // ✅ Track if player is near car for E key
+  const isPlayerNearCar = useRef(false)
+
   const vehicleParams = useRef({
     engineForce: 500,
     maxSteerValue: 5,
@@ -54,9 +101,11 @@ export const Car: React.FC<CarProps> = ({
     maxSuspensionTravel: 0.3,
     frictionSlip: 5,
     lateralDamping: 1,
+    minRPM: 0.5,
+    maxRPM: 2.0,
+    rpmLerpSpeed: 0.05,
   })
 
-  // Keyboard controls
   const controls = useRef({
     forward: false,
     backward: false,
@@ -70,35 +119,33 @@ export const Car: React.FC<CarProps> = ({
       startupSoundRef.current = new Audio('/sounds/car_engine/startup.wav')
       startupSoundRef.current.volume = 0.7
 
-      idleSoundRef.current = new Audio('/sounds/car_engine/idle.wav')
-      idleSoundRef.current.loop = true
-      idleSoundRef.current.volume = 0.5
-
-      accelerationSoundRef.current = new Audio('/sounds/car_engine/low_on.wav')
-      accelerationSoundRef.current.loop = true
-      accelerationSoundRef.current.volume = 0.6
+      engineSoundRef.current = new Audio('/sounds/car_engine/idle2.wav')
+      engineSoundRef.current.loop = true
+      engineSoundRef.current.volume = 0.6
+      engineSoundRef.current.playbackRate = vehicleParams.current.minRPM
     }
-    stopAllEngineSounds();
+    stopAllEngineSounds()
 
     return () => {
-      stopAllEngineSounds();
+      stopAllEngineSounds()
     }
   }, [])
 
   useEffect(() => {
-    if (startupFinished && carState.isDriving && !carState.isAccelerating && idleSoundRef.current) {
-      idleSoundRef.current.currentTime = 0
-      idleSoundRef.current.play()
+    if (startupFinished && carState.isDriving && engineSoundRef.current) {
+      engineSoundRef.current.currentTime = 0
+      engineSoundRef.current.play()
     } else {
-      idleSoundRef.current?.pause()
+      engineSoundRef.current?.pause()
     }
-  }, [startupFinished, carState.isDriving, carState.isAccelerating])
+  }, [startupFinished, carState.isDriving])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase()
 
-      if (key === 'e' && textVisibility && !carState.isDriving) {
+      // ✅ Use ref to check proximity - no state changes
+      if (key === 'e' && isPlayerNearCar.current && !carState.isDriving) {
         handleStartDriving()
       } else if (key === 'q' && carState.isDriving) {
         handleStopDriving()
@@ -106,7 +153,6 @@ export const Car: React.FC<CarProps> = ({
 
       if (!carState.isDriving) return
 
-      // Driving controls
       switch (key) {
         case 'w':
         case 'arrowup':
@@ -133,7 +179,7 @@ export const Car: React.FC<CarProps> = ({
     }
 
     const handleKeyUp = (event: KeyboardEvent) => {
-      if (!carState.isDriving) return;
+      if (!carState.isDriving) return
       const key = event.key.toLowerCase()
 
       switch (key) {
@@ -168,54 +214,25 @@ export const Car: React.FC<CarProps> = ({
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
     }
-  }, [textVisibility, carState.isDriving])
+  }, [carState.isDriving])
 
   const handleStartDriving = () => {
     if (chassisRef.current) {
-      // Switch to dynamic rigid body when driving starts
-      chassisRef.current.setBodyType(1, true) // 1 = Dynamic
+      chassisRef.current.setBodyType(1, true)
     }
     dispatch(startDriving({ position, rotation }))
-    setTextVisibility(false)
     setStartupFinished(false)
     playEngineStartupSequence()
   }
 
   const handleStopDriving = () => {
     if (chassisRef.current) {
-      // Switch back to kinematic/fixed when exiting
-      chassisRef.current.setBodyType(0, true) // 0 = Fixed/Static
+      chassisRef.current.setBodyType(0, true)
       chassisRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true)
       chassisRef.current.setAngvel({ x: 0, y: 0, z: 0 }, true)
     }
     dispatch(stopDriving())
     stopAllEngineSounds()
-  }
-
-  const handleStartAcceleration = () => {
-    if (!carState.isAccelerating) {
-      dispatch(setAccelerating(true))
-      idleSoundRef.current?.pause()
-
-      if (accelerationSoundRef.current) {
-        accelerationSoundRef.current.currentTime = 0
-        accelerationSoundRef.current.play()
-      }
-    }
-  }
-
-  const handleStopAcceleration = () => {
-    accelerationSoundRef.current?.pause()
-    if (!controls.current.forward && !controls.current.backward) {
-      idleSoundRef.current?.play()
-      dispatch(setAccelerating(false))
-      accelerationSoundRef.current?.pause()
-
-      if (idleSoundRef.current && carState.isDriving) {
-        idleSoundRef.current.currentTime = 0
-        idleSoundRef.current.play()
-      }
-    }
   }
 
   const playEngineStartupSequence = () => {
@@ -224,42 +241,75 @@ export const Car: React.FC<CarProps> = ({
     if (startupSoundRef.current) {
       startupSoundRef.current.currentTime = 0
       startupSoundRef.current.play()
-
       startupSoundRef.current.onended = () => setStartupFinished(true)
     }
   }
 
   const stopAllEngineSounds = () => {
     startupSoundRef.current?.pause()
-    idleSoundRef.current?.pause()
-    accelerationSoundRef.current?.pause()
+    engineSoundRef.current?.pause()
     setStartupFinished(false)
 
     if (startupSoundRef.current) startupSoundRef.current.currentTime = 0
-    if (idleSoundRef.current) idleSoundRef.current.currentTime = 0
-    if (accelerationSoundRef.current) accelerationSoundRef.current.currentTime = 0
+    if (engineSoundRef.current) engineSoundRef.current.currentTime = 0
   }
 
-  // Apply vehicle physics each frame
+  const handleStartAcceleration = () => {
+    if (!carState.isAccelerating) {
+      dispatch(setAccelerating(true))
+    }
+  }
+
+  const handleStopAcceleration = () => {
+    if (!controls.current.forward && !controls.current.backward) {
+      dispatch(setAccelerating(false))
+    }
+  }
+
   useFrame((state) => {
     if (!carState.isDriving || !chassisRef.current) return
 
     const { forward, backward, left, right, brake } = controls.current
-    const { engineForce, maxSteerValue, maxBrakeForce } = vehicleParams.current
+    const { engineForce, maxSteerValue, minRPM, maxRPM, rpmLerpSpeed } = vehicleParams.current
 
-    // Get current velocity and rotation
     const currentVelocity = chassisRef.current.linvel()
     const currentRotation = chassisRef.current.rotation()
 
-    // Calculate engine force
+    const speed = Math.sqrt(
+      currentVelocity.x ** 2 + currentVelocity.z ** 2
+    )
+
+    let targetRPM = minRPM
+
+    if (forward || backward) {
+      const speedFactor = Math.min(speed / 30, 1)
+      targetRPM = minRPM + (maxRPM - minRPM) * speedFactor
+
+      if (speed < 5) {
+        targetRPM = Math.max(targetRPM, minRPM + 0.3)
+      }
+    } else if (brake) {
+      targetRPM = minRPM
+    } else {
+      const speedFactor = Math.min(speed / 30, 1)
+      targetRPM = minRPM + (maxRPM - minRPM) * speedFactor * 0.5
+    }
+
+    currentRPM.current += (targetRPM - currentRPM.current) * rpmLerpSpeed
+
+    if (engineSoundRef.current && startupFinished) {
+      engineSoundRef.current.playbackRate = currentRPM.current
+      const volumeFactor = 0.4 + (currentRPM.current - minRPM) / (maxRPM - minRPM) * 0.3
+      engineSoundRef.current.volume = Math.min(volumeFactor, 0.8)
+    }
+
     let force = 0
     if (forward && !backward) {
       force = engineForce
     } else if (backward && !forward) {
-      force = -engineForce * 0.5 // Reverse is slower
+      force = -engineForce * 0.5
     }
 
-    // Calculate steering
     let steerValue = 0
     if (left && !right) {
       steerValue = maxSteerValue
@@ -267,7 +317,6 @@ export const Car: React.FC<CarProps> = ({
       steerValue = -maxSteerValue
     }
 
-    // Apply forces based on car's forward direction
     if (force !== 0) {
       const forwardDir = new THREE.Vector3(0, 0, 1)
       const quat = new THREE.Quaternion(
@@ -288,7 +337,6 @@ export const Car: React.FC<CarProps> = ({
       )
     }
 
-    // Counter lateral drift (sideways sliding)
     const quat = new THREE.Quaternion(
       currentRotation.x,
       currentRotation.y,
@@ -296,11 +344,9 @@ export const Car: React.FC<CarProps> = ({
       currentRotation.w
     )
 
-    // Get car's right direction
     const rightDir = new THREE.Vector3(1, 0, 0)
     rightDir.applyQuaternion(quat)
 
-    // Calculate lateral (sideways) velocity
     const lateralVelocity = new THREE.Vector3(
       currentVelocity.x,
       0,
@@ -308,8 +354,7 @@ export const Car: React.FC<CarProps> = ({
     )
     const lateralSpeed = lateralVelocity.dot(rightDir)
 
-    // Apply counter-force to reduce sideways drift
-    const lateralDamping = 0.2 // Adjust this value (0.9 = more grip, 0.99 = more drift)
+    const lateralDamping = 0.2
     if (Math.abs(lateralSpeed) > 0.1) {
       chassisRef.current.setLinvel(
         {
@@ -321,34 +366,27 @@ export const Car: React.FC<CarProps> = ({
       )
     }
 
-    // Apply steering (angular velocity)
     if (steerValue !== 0) {
       const speed = Math.sqrt(
         currentVelocity.x ** 2 + currentVelocity.z ** 2
       )
 
-      const minSteerForce = 0.05 // Base steering force even when stopped
+      const minSteerForce = 0.05
       const speedBasedSteer = Math.min(speed * 0.1, 1)
       const steerForce = steerValue * Math.max(speedBasedSteer, minSteerForce)
 
       chassisRef.current.applyTorqueImpulse(
         {
           x: 0,
-          y: steerForce * (forward ? 1 : backward ? -1 : 1), // Still reverse direction when backing up
+          y: steerForce * (forward ? 1 : backward ? -1 : 1),
           z: 0,
         },
         true
       )
     }
 
-    // Apply braking
     if (brake) {
-      const speed = Math.sqrt(
-        currentVelocity.x ** 2 + currentVelocity.z ** 2
-      )
-
-      // Progressive braking - stronger at higher speeds
-      const brakeForce = 0.96 // 0.95 = moderate braking, 0.98 = gentle, 0.92 = aggressive
+      const brakeForce = 0.96
 
       chassisRef.current.setLinvel(
         {
@@ -359,7 +397,6 @@ export const Car: React.FC<CarProps> = ({
         true
       )
 
-      // Also slow down rotation when braking
       const currentAngularVel = chassisRef.current.angvel()
       chassisRef.current.setAngvel(
         {
@@ -386,87 +423,38 @@ export const Car: React.FC<CarProps> = ({
 
       lastUpdateTime.current = now
     }
-
-    // Update Redux with current position and rotation
-    // const pos = chassisRef.current.translation()
-    // const rot = chassisRef.current.rotation()
-    // const euler = new THREE.Euler().setFromQuaternion(
-    //   new THREE.Quaternion(rot.x, rot.y, rot.z, rot.w)
-    // )
-
-    // dispatch(
-    //   updateCarTransform({
-    //     position: [pos.x, pos.y, pos.z],
-    //     rotation: [euler.x, euler.y, euler.z],
-    //   })
-    // )
   })
 
-  const FacingText = ({
-    position,
-    text,
-  }: {
-    position: [number, number, number]
-    text: string
-  }) => {
-    const { camera } = useThree()
-    const textRef = useRef<THREE.Mesh>(null)
-
-    useFrame(() => {
-      if (textRef.current) {
-        textRef.current.lookAt(camera.position)
-      }
-    })
-
-    if (carState.isDriving) return null
-
-    return (
-      <Text
-        ref={textRef}
-        position={position}
-        fontSize={0.5}
-        color="white"
-        anchorX="center"
-        anchorY="middle"
-      >
-        {text}
-      </Text>
-    )
-  }
-
   return (
-    <RigidBody
-      ref={chassisRef}
-      type={carState.isDriving ? 'dynamic' : 'fixed'}
-      position={position}
-      rotation={rotation}
-      colliders={false}
-      mass={500}
-    >
-      <group ref={carGroupRef} scale={scale}>
-        <primitive object={scene} />
-      </group>
+    <>
+      <RigidBody
+        ref={chassisRef}
+        type={carState.isDriving ? 'dynamic' : 'fixed'}
+        position={position}
+        rotation={rotation}
+        colliders={false}
+        mass={500}
+      >
+        <group ref={carGroupRef} scale={scale}>
+          <primitive object={scene} />
+        </group>
 
-      <CuboidCollider
-        args={[1.5, 1, 3.4]}
-        position={[position[0] - 26.2, position[1] + 26.8, position[2] - 45.6]}
-        onCollisionEnter={() => {
-          if (!carState.isDriving && !textVisibility) {
-            setTextVisibility(true)
-          }
-        }}
-        onCollisionExit={() => {
-          if (textVisibility) { // ✅ Check if already hidden
-            setTextVisibility(false)
-          }
-        }}
-      />
+        {/* ✅ Detection collider - updates ref only */}
+        <CuboidCollider
+          args={[1.5, 1, 3.4]}
+          position={[position[0] - 26.2, position[1] + 26.8, position[2] - 45.6]}
+          onCollisionEnter={() => {
+            isPlayerNearCar.current = true
+          }}
+          onCollisionExit={() => {
+            isPlayerNearCar.current = false
+          }}
+        />
+      </RigidBody>
 
-      {textVisibility && !carState.isDriving && (
-        <FacingText position={[15, 17, -38]} text="Press E to Drive the Car" />
-      )}
-
-    </RigidBody>
+      {/* ✅ Separate component - its re-renders won't affect Car */}
+      <CarInteractionText isPlayerNearCar={isPlayerNearCar} carPosition={position} isDriving={carState.isDriving} />
+    </>
   )
 }
 
