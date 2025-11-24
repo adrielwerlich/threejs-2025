@@ -204,6 +204,8 @@ export const Welcome = memo(() => {
   const [contextLost, setContextLost] = useState(false)
   const [renderCount, setRenderCount] = useState(0)
   const [isReady, setIsReady] = useState(false) // ✅ Add ready state
+  const [canvasReady, setCanvasReady] = useState(false) // ✅ Track canvas creation
+  const { progress } = useProgress()
 
 
   const canvasKeyRef = useRef('canvas-' + Math.random().toString(36).substr(2, 9))
@@ -355,6 +357,11 @@ export const Welcome = memo(() => {
       textures: info.memory?.textures,
       renderer: gl.capabilities.isWebGL2 ? 'WebGL2' : 'WebGL1'
     })
+
+    setTimeout(() => {
+      console.log('✅ Canvas ready, hiding loader')
+      setCanvasReady(true)
+    }, 100)
   }, [])
 
   if (contextLost) {
@@ -402,11 +409,15 @@ export const Welcome = memo(() => {
     )
   }
 
-  if (!isReady) {
+  console.log('🏠 Welcome component - isReady:', isReady, 'progress:', progress)
+
+  if (!isReady && progress !== 100 ) {
+    console.log('@@@ progress:', progress)
     return <LoadingManager />
   }
 
   console.log('🏠 Welcome component render END - Returning JSX')
+
 
   return (
     <div id="canvas-container" style={{ width: '100vw', height: '100vh' }}>
@@ -431,18 +442,16 @@ export const Welcome = memo(() => {
 
       {/* <Suspense fallback={<LoadingManager />}> */}
       <Canvas key={canvasKeyRef.current} {...canvasConfig} onCreated={handleCreated}>
-        {/* <Suspense fallback={null}> */}
-          <SceneContent
-            playerRef={playerRef}
-            playerRigidBodyRef={playerRigidBodyRef}
-            cameraControllerRef={cameraControllerRef}
-            useOrbitControls={useOrbitControls}
-            togglePhysicsDebug={togglePhysicsDebug}
-            isDriving={isDriving}
-            wasDriving={wasDriving}
-            exitPosition={exitPosition}
-          />
-        {/* </Suspense> */}
+        <SceneContent
+          playerRef={playerRef}
+          playerRigidBodyRef={playerRigidBodyRef}
+          cameraControllerRef={cameraControllerRef}
+          useOrbitControls={useOrbitControls}
+          togglePhysicsDebug={togglePhysicsDebug}
+          isDriving={isDriving}
+          wasDriving={wasDriving}
+          exitPosition={exitPosition}
+        />
       </Canvas>
       {/* </Suspense> */}
     </div>
